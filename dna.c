@@ -6,6 +6,58 @@
 // MAX char table (ASCII)
 #define MAX 256
 
+typedef estrutura1{
+	int result;
+	char* string;
+	int rank;
+} Tupla;
+
+typedef estrutura2{
+	Tupla** tvet;
+	int tam;
+} TVetor;
+
+Tupla* inicializar(int result, char* string, int rank){
+	Tupla* novo = (Tupla*)malloc(sizeof(Tupla));
+	novo->result = result;
+	novo->string = (char*)malloc(sizeof(char)*strlen(string));
+	strcpy(novo->string, string);
+	novo->rank = rank;
+}
+
+TVetor* insere(TVetor* array, int result, char* string, int rank){
+	if(array){
+		array->tam++;
+		TVetor* array = (TVetor*)realloc(array, sizeof(Tupla)*tam);
+		array->tvet[array->tam -1] = inicializar(result,string,rank); 
+		return array;
+	}else{
+		array->tvet = (Tupla**)malloc(sizeof(Tupla*));
+		array->tvet[0] = inicializar(result,string,rank);
+		array->tam++;
+	}
+	return array;
+}
+
+void print(TVetor* array){
+	if(array){
+		int x = array->tam-1;
+		while(x>=0){
+			printf(array->tvet[x]);
+		}
+	}
+}
+
+void libera(TVetor*array){
+	int x = array->tam-1;
+	while(x>=0){
+		free(array->tvet[x]->string);
+		free(array->tvet[x]);
+		x--;
+	}
+	free(array);
+}
+
 // Boyers-Moore-Hospool-Sunday algorithm for string matching
 int bmhs(char *string, int n, char *substr, int m) {
 
@@ -88,7 +140,8 @@ void slice_str(const char * str, char * buffer, size_t start, size_t end)
     buffer[j] = 0;
 }
 
-int divide(char *string, int tam_string, char *substr, int tam_substring) {
+Tupla* divide(char *string, int tam_string, char *substr, int tam_substring) {
+	
 	int result;
 	//int tam_string_procs_ini = (tam_string/nprocs) + tam_substring - 1;
 	//int tam_string_procs_meio = (tam_string/nprocs) + tam_substring - 1 + tam_substring - 1;
@@ -163,13 +216,17 @@ int divide(char *string, int tam_string, char *substr, int tam_substring) {
 			result += msg_ini;
 		}
 	}
-	return result;
+	static Tupla* resp = inicializar(result, string, meu_rank);
+	return resp;
 }
 
 char *bases;
 char *str;
 
 int main(int argc, char** argv) {
+	Tupla *resp;
+	TVetor *Tbases = NULL;
+	TVetor *Tsubstring = NULL;
 
 	bases = (char*) malloc(sizeof(char) * 1000001);
 	if (bases == NULL) {
@@ -186,7 +243,8 @@ int main(int argc, char** argv) {
 
 	char desc_dna[100], desc_query[100];
 	char line[100];
-	int i, found, result;
+	int i, found, result, atual;
+	atuaç = 0;
 
 	fgets(desc_query, 100, fquery);
 	remove_eol(desc_query);
@@ -232,14 +290,18 @@ int main(int argc, char** argv) {
 			//printf("str\n");
 			//printf(str);
 			//result = bmhs(bases, strlen(bases), str, strlen(str));
-			result = divide(bases, strlen(bases), str, strlen(str));
-			if (result > 0) {
+			
+			resp = divide(bases, strlen(bases), str, strlen(str));
+			if (resp->result > 0) {
+				Tbases = insere(Tbases, atual, bases, atual);
+				Tsubstring = insere(Tsubstring, atual, bases, atual);
 				//fflush(stdout);
 				//printf("\n%s\nString %s substr %s Rank %d\n%s\n%d\n",desc_query,bases,str,meu_rank,desc_dna, result);
 				//fflush(fout);
 				fprintf(fout, "%s\n%d\n", desc_dna, result);
 				found++;
 			}
+			atual++;
 		}
 
 		if (!found)
@@ -247,6 +309,9 @@ int main(int argc, char** argv) {
 			//printf("\nRank %d \nNOT FOUND\n",meu_rank);
 			//fflush(fout);
 			fprintf(fout, "NOT FOUND\n");
+		free(resp);
+		libera(Tsubstring);
+		libera(Tbases);
 	}
 	MPI_Finalize();
 	closefiles();
